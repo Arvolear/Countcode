@@ -1,0 +1,129 @@
+#!/bin/bash
+
+task=0
+path="."
+depth=-1
+types=""
+verbose=0
+total=0
+
+function help
+{
+    echo -e "countcode [--files --lines --chars] -p [path] -d [number] -t \"[type] [type]\" -v -h"
+    echo -e "\t-p [path] - path to the directory"
+    echo -e "\t-d [number] - depth of the tree"
+    echo -e "\t-t \"[type] [type]\" - the types of files to consider"
+    echo -e "\t-v - verbose output"
+    echo -e "\t-h - help"
+
+    exit 0
+}
+
+while [ -n "$1" ]
+do
+    case $1 in        
+        --files) task=1;;
+        
+        --lines) task=2;;
+        
+        --chars) task=3;;
+
+        -d) depth=$2
+            shift;;
+
+        -p) path=$2
+            shift;;
+
+        -t) types="$2"
+            shift;;
+
+        -v) verbose=1;;
+
+        -h) help;;
+
+        *) echo "Wrong argument"
+           exit 0;;
+    esac
+
+    shift
+done
+
+if [[ $task -eq 0 ]]
+then
+    echo "You have to specify the task"
+    exit 0
+fi
+
+if [[ ! -e $path || -f $path ]]
+then
+    echo "Wrong path to the file"
+    exit 0
+fi
+
+function count
+{
+    local curDepth=$(($1 + 1))
+    local curPath=$2
+
+    if [[ $depth -ne -1 && $curDepth -gt $depth ]]
+    then
+        return
+    fi
+
+    for i in `ls $curPath`
+    do
+        local curFile=$"$curPath/$i"
+
+        if [[ -d $curFile ]]
+        then
+            count $curDepth $curFile
+        else
+            for j in $types
+            do
+                if [[ $i == *.$j ]]
+                then
+                    if [[ $task -eq 1 ]] # files
+                    then
+                        total=$(($total + 1))
+                        
+                        if [[ $verbose -eq 1 ]]
+                        then
+                            echo $curFile
+                        fi
+                    elif [[ $task -eq 2 ]] # lines
+                    then
+                        total=$(($total + `wc -l < $curFile`))
+                    
+                        if [[ $verbose -eq 1 ]]
+                        then
+                            echo $curFile `wc -l < $curFile`
+                        fi
+                    elif [[ $task -eq 3 ]] # chars
+                    then
+                        total=$(($total + `wc -c < $curFile`))
+                    
+                        if [[ $verbose -eq 1 ]]
+                        then
+                            echo $curFile `wc -c < $curFile`
+                        fi
+                    fi
+
+                    break
+                fi
+            done
+        fi
+    done   
+}
+
+count -1 $path
+
+if [[ $task -eq 1 ]] # files
+then
+    echo "Amount of code files: $total"
+elif [[ $task -eq 2 ]] # lines
+then
+    echo "Amount of code lines: $total"
+elif [[ $task -eq 3 ]] # chars
+then
+    echo "Amount of code chars: $total"
+fi
